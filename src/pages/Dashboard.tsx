@@ -10,6 +10,8 @@ import { Upload } from "lucide-react";
 
 const Dashboard = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [name, setName] = useState("");
+  const [tags, setTags] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -27,6 +29,10 @@ const Dashboard = () => {
       showError("Please select a file first.");
       return;
     }
+    if (!name.trim()) {
+      showError("Please provide a name for the wallpaper.");
+      return;
+    }
 
     setIsUploading(true);
     const toastId = showLoading("Uploading wallpaper...");
@@ -35,10 +41,15 @@ const Dashboard = () => {
     reader.readAsDataURL(selectedFile);
     reader.onloadend = async () => {
       const base64String = reader.result as string;
+      const tagArray = tags.split(',').map(tag => tag.trim()).filter(tag => tag);
 
       try {
         const { data, error } = await supabase.functions.invoke("upload-wallpaper", {
-          body: { image: base64String },
+          body: { 
+            image: base64String,
+            name: name,
+            tags: tagArray
+          },
         });
 
         if (error) {
@@ -49,6 +60,8 @@ const Dashboard = () => {
         showSuccess(data.message || "Wallpaper uploaded successfully!");
         setSelectedFile(null);
         setPreview(null);
+        setName("");
+        setTags("");
         
         const fileInput = document.getElementById('wallpaper-file') as HTMLInputElement;
         if (fileInput) {
@@ -81,21 +94,29 @@ const Dashboard = () => {
         <CardHeader>
           <CardTitle>Upload Wallpaper</CardTitle>
           <CardDescription>
-            Select an image to upload. It will be processed and added to the gallery.
+            Select an image and provide details to upload it to the gallery.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid w-full items-center gap-4">
             <div className="flex flex-col space-y-1.5">
               <Label htmlFor="wallpaper-file">Image</Label>
-              <Input id="wallpaper-file" type="file" accept="image/*" onChange={handleFileChange} />
+              <Input id="wallpaper-file" type="file" accept="image/*" onChange={handleFileChange} required />
+            </div>
+             <div className="flex flex-col space-y-1.5">
+              <Label htmlFor="wallpaper-name">Name</Label>
+              <Input id="wallpaper-name" type="text" placeholder="e.g., Sunset Over Mountains" value={name} onChange={(e) => setName(e.target.value)} required />
+            </div>
+             <div className="flex flex-col space-y-1.5">
+              <Label htmlFor="wallpaper-tags">Tags (comma-separated)</Label>
+              <Input id="wallpaper-tags" type="text" placeholder="e.g., nature, sunset, mountains" value={tags} onChange={(e) => setTags(e.target.value)} />
             </div>
             {preview && (
               <div className="mt-4">
                 <img src={preview} alt="Image preview" className="rounded-md max-h-60 w-full object-contain" />
               </div>
             )}
-            <Button onClick={handleUpload} disabled={isUploading || !selectedFile} className="w-full mt-4">
+            <Button onClick={handleUpload} disabled={isUploading || !selectedFile || !name.trim()} className="w-full mt-4">
               {isUploading ? "Uploading..." : <><Upload className="mr-2 h-4 w-4" /> Upload</>}
             </Button>
           </div>
