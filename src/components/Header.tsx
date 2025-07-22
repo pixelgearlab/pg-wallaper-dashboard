@@ -10,7 +10,7 @@ const Header = () => {
         <div className="flex items-center">
           <Link to="/" className="mr-6 flex items-center space-x-2">
             <span className="font-bold sm:inline-block">
-              PG Wallpaper
+              PG Wallpaper Dashboard
             </span>
           </Link>
           <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
