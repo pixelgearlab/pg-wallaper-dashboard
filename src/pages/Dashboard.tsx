@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,7 @@ const Dashboard = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -47,11 +49,16 @@ const Dashboard = () => {
         showSuccess(data.message || "Wallpaper uploaded successfully!");
         setSelectedFile(null);
         setPreview(null);
-        // Optionally, clear the file input
+        
         const fileInput = document.getElementById('wallpaper-file') as HTMLInputElement;
         if (fileInput) {
           fileInput.value = "";
         }
+
+        setTimeout(() => {
+          navigate("/");
+        }, 1000);
+
       } catch (error: any) {
         dismissToast(toastId);
         console.error("Upload failed:", error);

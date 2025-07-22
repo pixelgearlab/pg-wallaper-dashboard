@@ -6,27 +6,29 @@ import { Menu } from "lucide-react";
 const Header = () => {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 items-center">
-        <div className="mr-4 hidden md:flex">
+      <div className="container flex h-14 items-center justify-between">
+        <div className="flex items-center">
           <Link to="/" className="mr-6 flex items-center space-x-2">
-            <span className="hidden font-bold sm:inline-block">
-              PG Wallpaper Dashboard
+            <span className="font-bold sm:inline-block">
+              PG Wallpaper
             </span>
           </Link>
-          <nav className="flex items-center space-x-6 text-sm font-medium">
+          <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
             <Link
               to="/"
               className="transition-colors hover:text-foreground/80 text-foreground"
             >
-              Dashboard
+              Gallery
+            </Link>
+            <Link
+              to="/upload"
+              className="transition-colors hover:text-foreground/80 text-muted-foreground"
+            >
+              Upload
             </Link>
           </nav>
         </div>
-        <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
-          <div className="w-full flex-1 md:w-auto md:flex-none">
-            {/* Search can be added here later */}
-          </div>
-        </div>
+
         <div className="md:hidden">
           <Sheet>
             <SheetTrigger asChild>
@@ -37,8 +39,11 @@ const Header = () => {
             </SheetTrigger>
             <SheetContent side="left">
               <div className="flex flex-col space-y-4 p-4">
-                <Link to="/" className="text-lg font-medium">
-                  Dashboard
+                 <Link to="/" className="text-lg font-medium">
+                  Gallery
+                </Link>
+                <Link to="/upload" className="text-lg font-medium">
+                  Upload
                 </Link>
               </div>
             </SheetContent>

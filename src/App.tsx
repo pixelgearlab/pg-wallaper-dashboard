@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import Header from "./components/Header";
+import Gallery from "./pages/Gallery";
 
 const queryClient = new QueryClient();
 
@@ -18,7 +19,8 @@ const App = () => (
         <Header />
         <main className="container mx-auto p-4">
           <Routes>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/" element={<Gallery />} />
+            <Route path="/upload" element={<Dashboard />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
