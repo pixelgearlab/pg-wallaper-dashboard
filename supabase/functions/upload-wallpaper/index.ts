@@ -6,9 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Helper function to safely parse JSON from Gemini's response
 function cleanAndParseJson(text: string): { name: string; tags: string[] } {
-  // Remove markdown fences if they exist
   const cleanedText = text.replace(/```json\n|```/g, "").trim();
   try {
     return JSON.parse(cleanedText);
@@ -24,7 +22,6 @@ serve(async (req) => {
   }
 
   try {
-    // Get API keys from Supabase secrets
     const imgbbApiKey = Deno.env.get("IMGBB_API_KEY");
     const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
 
@@ -33,12 +30,15 @@ serve(async (req) => {
 
     const { image } = await req.json();
     if (!image) throw new Error("No image data provided.");
-    
-    const parts = image.split(",");
-    if (parts.length !== 2) throw new Error("Invalid base64 image format.");
-    const base64Data = parts[1];
 
-    // Step 1: Upload to ImgBB
+    const imageParts = image.match(/^data:(image\/.+);base64,(.+)$/);
+    if (!imageParts || imageParts.length !== 3) {
+      throw new Error("Invalid base64 image format. Expected a data URL.");
+    }
+    const mimeType = imageParts[1];
+    const base64Data = imageParts[2];
+
+    // Step 1: Upload to ImgBB to get public URLs for storage
     const formData = new FormData();
     formData.append("image", base64Data);
     const imgbbRes = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbApiKey}`, {
@@ -47,19 +47,24 @@ serve(async (req) => {
     });
     if (!imgbbRes.ok) throw new Error(`ImgBB upload failed: ${await imgbbRes.text()}`);
     const imgbbData = await imgbbRes.json();
-    if (!imgbbData.success) throw new Error(`ImgBB API returned an error.`);
+    if (!imgbbData.success) throw new Error(`ImgBB API returned an error: ${imgbbData.error.message}`);
 
     const imageUrl = imgbbData.data.url;
     const thumbUrl = imgbbData.data.thumb.url;
 
-    // Step 2: Call Gemini API to get name and tags
-    const geminiPrompt = `Analyze this image and provide a suitable name and tags for a wallpaper gallery. The image URL is: ${imageUrl}. Respond with a single, clean JSON object with two keys: "name" (a creative title, 3-5 words) and "tags" (a JSON array of 3-5 relevant, single-word, lowercase tags). Do not include any other text or markdown formatting.`;
+    // Step 2: Call Gemini API with direct image data for more reliability
+    const geminiPrompt = `Analyze this image and provide a suitable name and tags for a wallpaper gallery. Respond with a single, clean JSON object with two keys: "name" (a creative title, 3-5 words) and "tags" (a JSON array of 3-5 relevant, single-word, lowercase tags). Do not include any other text or markdown formatting.`;
     
     const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key=${geminiApiKey}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-            contents: [{ parts: [{ text: geminiPrompt }] }]
+            contents: [{ 
+                parts: [
+                    { text: geminiPrompt },
+                    { inline_data: { mime_type: mimeType, data: base64Data } }
+                ] 
+            }]
         }),
     });
 
@@ -67,7 +72,7 @@ serve(async (req) => {
     const geminiData = await geminiRes.json();
     
     const geminiText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!geminiText) throw new Error("Received an invalid response from the AI model.");
+    if (!geminiText) throw new Error("Received an invalid response from the AI model. It might be due to safety filters or other restrictions.");
 
     const { name, tags } = cleanAndParseJson(geminiText);
 
