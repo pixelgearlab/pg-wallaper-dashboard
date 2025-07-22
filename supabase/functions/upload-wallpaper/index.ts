@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,28 +12,72 @@ serve(async (req) => {
   }
 
   try {
-    // We are not processing the image for now, just checking the connection.
-    console.log("Simplified test function invoked to check client-server connection.");
-    
-    // Pretend to do some work for 1 second to simulate a process
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // We can check if image data is received, but we won't process it.
-    const body = await req.json().catch(() => ({}));
-    if (body.image) {
-      console.log("Image data was received by the test function.");
-    } else {
-      console.log("No image data received, but that's okay for this test.");
+    const imgbbApiKey = Deno.env.get("IMGBB_API_KEY");
+    if (!imgbbApiKey) {
+      throw new Error("API key for ImgBB is not set in Supabase secrets. Please add it.");
     }
 
-    // Always return a success message for this test
-    return new Response(JSON.stringify({ message: "Test successful! Connection to server is working." }), {
+    const { image } = await req.json();
+    if (!image) {
+      throw new Error("No image data provided.");
+    }
+    
+    const parts = image.split(",");
+    if (parts.length !== 2) {
+      throw new Error("Invalid base64 image format.");
+    }
+    const base64Data = parts[1];
+
+    // Step 1: Upload to ImgBB
+    const formData = new FormData();
+    formData.append("image", base64Data);
+
+    const imgbbRes = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbApiKey}`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!imgbbRes.ok) {
+      const errorText = await imgbbRes.text();
+      throw new Error(`ImgBB upload failed: ${errorText}`);
+    }
+
+    const imgbbData = await imgbbRes.json();
+    if (!imgbbData.success) {
+      throw new Error(`ImgBB API returned an error: ${JSON.stringify(imgbbData.error)}`);
+    }
+
+    const imageUrl = imgbbData.data.url;
+    const thumbUrl = imgbbData.data.thumb.url;
+
+    // Using placeholder data for now
+    const name = "New Wallpaper";
+    const tags = ["uploaded"];
+
+    // Step 2: Insert into Supabase
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    const { error: dbError } = await supabaseClient.from("wallpapers").insert({
+      name: name,
+      tags: tags,
+      image_url: imageUrl,
+      thumb_url: thumbUrl,
+    });
+
+    if (dbError) {
+      throw new Error(`Database insert failed: ${dbError.message}`);
+    }
+
+    return new Response(JSON.stringify({ message: "Wallpaper uploaded successfully!" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
-    console.error("Error in test function:", error);
-    return new Response(JSON.stringify({ error: "Test function failed: " + error.message }), {
+    console.error("Error in upload function:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
