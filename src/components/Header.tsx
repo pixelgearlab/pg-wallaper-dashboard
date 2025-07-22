@@ -18,12 +18,6 @@ const Header = () => {
               to="/"
               className="transition-colors hover:text-foreground/80 text-foreground"
             >
-              Home
-            </Link>
-            <Link
-              to="/dashboard"
-              className="transition-colors hover:text-foreground/80 text-foreground/60"
-            >
               Dashboard
             </Link>
           </nav>
@@ -44,9 +38,6 @@ const Header = () => {
             <SheetContent side="left">
               <div className="flex flex-col space-y-4 p-4">
                 <Link to="/" className="text-lg font-medium">
-                  Home
-                </Link>
-                <Link to="/dashboard" className="text-lg font-medium">
                   Dashboard
                 </Link>
               </div>

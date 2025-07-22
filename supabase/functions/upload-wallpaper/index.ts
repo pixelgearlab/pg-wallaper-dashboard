@@ -6,23 +6,20 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent`;
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log("Upload function invoked.");
+    console.log("Upload function invoked (simplified version).");
 
     const imgbbApiKey = Deno.env.get("IMGBB_API_KEY");
-    const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
-    if (!imgbbApiKey || !geminiApiKey) {
-      console.error("API keys are not set.");
-      throw new Error("API keys for ImgBB or Gemini are not set in Supabase secrets.");
+    if (!imgbbApiKey) {
+      console.error("IMGBB_API_KEY is not set.");
+      throw new Error("API key for ImgBB is not set in Supabase secrets.");
     }
-    console.log("API keys found.");
+    console.log("ImgBB API key found.");
 
     const { image } = await req.json();
     if (!image) {
@@ -34,13 +31,7 @@ serve(async (req) => {
     if (parts.length !== 2) {
       throw new Error("Invalid base64 image format.");
     }
-    const [header, base64Data] = parts;
-    const mimeTypeMatch = header.match(/:(.*?);/);
-    if (!mimeTypeMatch || !mimeTypeMatch[1]) {
-        throw new Error("Could not determine mime type from image data.");
-    }
-    const mimeType = mimeTypeMatch[1];
-    console.log(`Image mime type: ${mimeType}`);
+    const base64Data = parts[1];
 
     // Step 1: Upload to ImgBB
     const formData = new FormData();
@@ -68,67 +59,12 @@ serve(async (req) => {
     const imageUrl = imgbbData.data.url;
     const thumbUrl = imgbbData.data.thumb.url;
 
-    // Step 2: Analyze with Gemini
-    const geminiPrompt = `Analyze this image of a wallpaper. Provide a suitable title (max 10 words), and 5 relevant tags as a single comma-separated string (e.g., 'nature, sky, blue, clouds, landscape'). Respond ONLY with a valid JSON object with keys "name" and "tags". Example: {"name": "Blue Sky Landscape", "tags": "sky, blue, clouds, nature, peaceful"}`;
+    // Using placeholder data instead of Gemini analysis
+    const name = "New Wallpaper";
+    const tags = "uploaded";
+    console.log(`Using placeholder data: Name - ${name}, Tags - ${tags}`);
 
-    const geminiBody = {
-      contents: [
-        {
-          parts: [
-            { text: geminiPrompt },
-            {
-              inline_data: {
-                mime_type: mimeType,
-                data: base64Data,
-              },
-            },
-          ],
-        },
-      ],
-      generationConfig: {
-        "response_mime_type": "application/json",
-      }
-    };
-
-    console.log("Analyzing with Gemini...");
-    const geminiRes = await fetch(`${GEMINI_API_URL}?key=${geminiApiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(geminiBody),
-    });
-
-    if (!geminiRes.ok) {
-      const errorText = await geminiRes.text();
-      console.error("Gemini API request failed:", errorText);
-      throw new Error(`Gemini API request failed: ${errorText}`);
-    }
-
-    const geminiData = await geminiRes.json();
-    console.log("Gemini response received.");
-
-    if (!geminiData.candidates || geminiData.candidates.length === 0) {
-        console.error("Gemini response has no candidates:", geminiData);
-        throw new Error("Gemini did not return any candidates.");
-    }
-
-    const rawJsonText = geminiData.candidates[0].content.parts[0].text;
-    let name, tags;
-    try {
-        const parsedJson = JSON.parse(rawJsonText);
-        name = parsedJson.name;
-        tags = parsedJson.tags;
-        if (!name || !tags) {
-            throw new Error("Parsed JSON from Gemini is missing 'name' or 'tags' keys.");
-        }
-    } catch (e) {
-        console.error("Failed to parse JSON from Gemini:", rawJsonText, e);
-        // Fallback if Gemini fails to provide valid JSON
-        name = "Untitled Wallpaper";
-        tags = "untagged";
-    }
-    console.log(`Gemini analysis result: Name - ${name}, Tags - ${tags}`);
-
-    // Step 3: Insert into Supabase
+    // Step 2: Insert into Supabase
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -148,7 +84,7 @@ serve(async (req) => {
     }
     console.log("Database insert successful.");
 
-    return new Response(JSON.stringify({ message: "Wallpaper uploaded and processed successfully!" }), {
+    return new Response(JSON.stringify({ message: "Wallpaper uploaded successfully!" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
