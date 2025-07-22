@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { showLoading, showSuccess, showError, dismissToast } from "@/utils/toast";
-import { Upload, Sparkles } from "lucide-react";
+import { Upload } from "lucide-react";
 import { DndUpload } from "@/components/DndUpload";
 
 const Dashboard = () => {
@@ -15,38 +15,15 @@ const Dashboard = () => {
   const [name, setName] = useState("");
   const [tags, setTags] = useState("");
   const [isUploading, setIsUploading] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const handleFileSelect = async (file: File | null) => {
+  const handleFileSelect = (file: File | null) => {
     setSelectedFile(file);
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64String = reader.result as string;
-        setPreview(base64String);
-        
-        setIsAnalyzing(true);
-        const toastId = showLoading("Analyzing image with AI...");
-        try {
-          const { data, error } = await supabase.functions.invoke("analyze-image", {
-            body: { image: base64String },
-          });
-
-          if (error) throw error;
-
-          setName(data.name || "");
-          setTags(data.tags?.join(", ") || "");
-          dismissToast(toastId);
-          showSuccess("Analysis complete!");
-        } catch (error: any) {
-          dismissToast(toastId);
-          showError(error.message || "AI analysis failed.");
-          console.error("Analysis error:", error);
-        } finally {
-          setIsAnalyzing(false);
-        }
+      reader.onloadend = () => {
+        setPreview(reader.result as string);
       };
       reader.readAsDataURL(file);
     } else {
@@ -110,11 +87,11 @@ const Dashboard = () => {
         <Card className="w-full">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-6 w-6 text-primary" />
-              AI-Powered Upload
+              <Upload className="h-6 w-6 text-primary" />
+              Upload a New Wallpaper
             </CardTitle>
             <CardDescription>
-              Drop an image and let AI generate a name and tags for you.
+              Select an image and provide a name and tags to add it to the gallery.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -125,14 +102,14 @@ const Dashboard = () => {
               </div>
               <div className="flex flex-col space-y-1.5">
                 <Label htmlFor="wallpaper-name">Name</Label>
-                <Input id="wallpaper-name" type="text" placeholder={isAnalyzing ? "AI is thinking..." : "e.g., Sunset Over Mountains"} value={name} onChange={(e) => setName(e.target.value)} required disabled={isAnalyzing} />
+                <Input id="wallpaper-name" type="text" placeholder="e.g., Sunset Over Mountains" value={name} onChange={(e) => setName(e.target.value)} required />
               </div>
               <div className="flex flex-col space-y-1.5">
                 <Label htmlFor="wallpaper-tags">Tags (comma-separated)</Label>
-                <Input id="wallpaper-tags" type="text" placeholder={isAnalyzing ? "AI is thinking..." : "e.g., nature, sunset, mountains"} value={tags} onChange={(e) => setTags(e.target.value)} disabled={isAnalyzing} />
+                <Input id="wallpaper-tags" type="text" placeholder="e.g., nature, sunset, mountains" value={tags} onChange={(e) => setTags(e.target.value)} />
               </div>
-              <Button onClick={handleUpload} disabled={isUploading || isAnalyzing || !selectedFile || !name.trim()} className="w-full mt-2">
-                {isUploading ? "Uploading..." : (isAnalyzing ? "Analyzing..." : <><Upload className="mr-2 h-4 w-4" /> Upload Wallpaper</>)}
+              <Button onClick={handleUpload} disabled={isUploading || !selectedFile || !name.trim()} className="w-full mt-2">
+                {isUploading ? "Uploading..." : <><Upload className="mr-2 h-4 w-4" /> Upload Wallpaper</>}
               </Button>
             </div>
           </CardContent>
